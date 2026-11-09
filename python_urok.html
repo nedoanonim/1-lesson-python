@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Перший крок у Python</title>
+<style>
+:root{--bg:#fbf3e4;--card:#fff;--ink:#2b2a33;--mut:#6b6877;--or:#f08a3c;--bl:#3b82d6;--gr:#2fa37a;--rd:#d64545;--code:#1f2230}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Nunito","Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+header{padding:18px 20px 10px;max-width:960px;margin:0 auto}
+h1{margin:0;font-size:1.6rem}
+.bar{height:12px;background:#eadfc9;border-radius:9px;overflow:hidden;margin:10px 0 4px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--or),var(--gr));transition:width .4s}
+.stat{font-size:.9rem;color:var(--mut);display:flex;justify-content:space-between}
+nav{display:flex;gap:6px;flex-wrap:wrap;max-width:960px;margin:0 auto;padding:0 20px 8px}
+nav button{border:2px solid #e3d6bb;background:#fff;border-radius:20px;padding:4px 11px;font:inherit;font-size:.85rem;cursor:pointer}
+nav button.on{border-color:var(--bl);background:#e8f1fc;font-weight:700}
+nav button.done{background:#dff5ea;border-color:var(--gr)}
+main{max-width:960px;margin:0 auto;padding:8px 20px 60px}
+.card{background:var(--card);border-radius:18px;padding:22px;box-shadow:0 4px 18px #0001}
+h2{margin:0 0 8px;font-size:1.4rem}
+.tag{display:inline-block;font-size:.75rem;font-weight:800;padding:2px 9px;border-radius:10px;color:#fff;margin-right:6px}
+.t-task{background:var(--or)}.t-pro{background:var(--bl)}
+.box{background:#fff6e5;border-left:5px solid var(--or);padding:10px 14px;border-radius:8px;margin:12px 0}
+.task{background:#eaf3ff;border-left:5px solid var(--bl);padding:10px 14px;border-radius:8px;margin:12px 0}
+textarea{width:100%;min-height:150px;background:var(--code);color:#e8ecff;border:0;border-radius:12px;padding:14px;font:15px/1.5 Consolas,"Courier New",monospace;resize:vertical;tab-size:4}
+pre.out{background:#111;color:#8dffb0;border-radius:12px;padding:12px 14px;min-height:56px;margin:8px 0;white-space:pre-wrap;font:15px Consolas,monospace}
+pre.out.err{color:#ffb4b4}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+button.b{border:0;border-radius:12px;padding:10px 18px;font:inherit;font-weight:800;cursor:pointer;color:#fff;background:var(--gr)}
+button.b.alt{background:var(--bl)}button.b.gh{background:#c9bfa8}
+button.b:disabled{opacity:.5;cursor:wait}
+.opt{display:block;width:100%;text-align:left;border:2px solid #e3d6bb;background:#fff;border-radius:12px;padding:10px 14px;margin:8px 0;font:inherit;cursor:pointer}
+.opt:hover{border-color:var(--bl)}.opt.ok{background:#dff5ea;border-color:var(--gr)}.opt.no{background:#fde4e4;border-color:var(--rd)}
+.msg{font-weight:800;margin:8px 0;min-height:1.4em}.msg.ok{color:var(--gr)}.msg.no{color:var(--rd)}
+code{background:#f1e9d6;padding:1px 6px;border-radius:5px}
+.hint{display:none;color:var(--mut);font-size:.95rem}
+/*x*/#load{font-size:.85rem;color:var(--mut)}
+.in{background:#222;color:#fff;border:1px solid #8dffb0;border-radius:6px;font:inherit;padding:1px 6px;min-width:120px}
+</style>
+</head>
+<body>
+<header>
+<h1>🐍 Перший крок у Python: змінні та алгоритми</h1>
+<div class="bar"><i id="pb"></i></div>
+<div class="stat"><span id="load">✅ Python готовий (працює без інтернету)</span><span>⭐ Зірок: <b id="xp">0</b></span></div>
+</header>
+<nav id="nav"></nav>
+<main><div class="card" id="card"></div></main>
+
+<script>
+(function(){
+class F{constructor(v){this.v=v}}
+class T{constructor(n){this.n=n}}
+class PyErr extends Error{constructor(k,m){super(m);this.k=k;this.line=0}}
+const E=(k,m)=>new PyErr(k,m);
+const KW=new Set("class def if else elif for while import from return in is and or not pass break continue try except with lambda del global as assert raise yield finally".split(" "));
+const BLOCK=new Set("if else elif for while def import from try with class".split(" "));
+const ASG=new Set(["=","+=","-=","*=","/=","//=","%=","**="]);
+const OPS=/^(\*\*=|\/\/=|\*\*|\/\/|==|!=|<=|>=|\+=|-=|\*=|\/=|%=|[-+*\/%()=<>,])/;
+const isNum=v=>typeof v==="number"||typeof v==="boolean"||v instanceof F;
+const val=v=>v instanceof F?v.v:Number(v);
+const tn=v=>v===null?"NoneType":typeof v==="boolean"?"bool":typeof v==="number"?"int":v instanceof F?"float":typeof v==="string"?"str":"type";
+const fmtF=v=>Number.isInteger(v)&&Math.abs(v)<1e16?v.toFixed(1):isFinite(v)?String(v):(v>0?"inf":v<0?"-inf":"nan");
+const S=v=>v===null?"None":v===true?"True":v===false?"False":v instanceof F?fmtF(v.v):v instanceof T?`<class '${v.n}'>`:String(v);
+const truthy=v=>v===null?false:v instanceof F?v.v!==0:typeof v==="string"?v.length>0:Boolean(v);
+
+function tokenize(src,ln){
+ const out=[];let i=0;
+ while(i<src.length){
+  const c=src[i];
+  if(c===" "||c==="\t"){i++;continue}
+  if(c==="#")break;
+  const r=src.slice(i);let m;
+  if(m=/^([fF]?)(["'])/.exec(r)){
+   const q=m[2];let j=i+m[0].length,s="",ok=false;
+   while(j<src.length){const d=src[j];
+    if(d==="\\"&&j+1<src.length){const x=src[j+1];s+=x==="n"?"\n":x==="t"?"\t":x;j+=2;continue}
+    if(d===q){ok=true;break}
+    s+=d;j++}
+   if(!ok)throw E("SyntaxError",`unterminated string literal (detected at line ${ln||1})`);
+   out.push({t:m[1]?"fstr":"str",v:s});i=j+1;continue}
+  if(m=/^(\d+\.?\d*|\.\d+)/.exec(r)){
+   if(/^[\p{L}_]/u.test(r.slice(m[0].length)))throw E("SyntaxError","invalid decimal literal");
+   out.push({t:"num",v:m[0].includes(".")?new F(parseFloat(m[0])):parseInt(m[0],10)});i+=m[0].length;continue}
+  if(m=/^[\p{L}_][\p{L}\p{N}_]*/u.exec(r)){out.push({t:"id",v:m[0]});i+=m[0].length;continue}
+  if(m=OPS.exec(r)){out.push({t:"op",v:m[0]});i+=m[0].length;continue}
+  if(/[“”‘’]/.test(c))throw E("SyntaxError",`invalid character '${c}' — використовуй прямі лапки " або '`);
+  throw E("SyntaxError","invalid syntax");
+ }
+ return out}
+
+function parse(tk,mode){
+ let p=0;
+ const pk=()=>tk[p];
+ const isOp=v=>!!pk()&&pk().t==="op"&&pk().v===v;
+ const isKw=v=>!!pk()&&pk().t==="id"&&pk().v===v;
+ const bad=m=>E("SyntaxError",m||"invalid syntax");
+ function or(){let l=and();while(isKw("or")){p++;l={k:"or",l,r:and()}}return l}
+ function and(){let l=not();while(isKw("and")){p++;l={k:"and",l,r:not()}}return l}
+ function not(){if(isKw("not")){p++;return{k:"not",e:not()}}return cmp()}
+ function cmp(){let l=arith();if(pk()&&pk().t==="op"&&["==","!=","<",">","<=",">="].includes(pk().v)){const op=tk[p++].v;return{k:"cmp",op,l,r:arith()}}return l}
+ function arith(){let l=term();while(isOp("+")||isOp("-")){const op=tk[p++].v;l={k:"bin",op,l,r:term()}}return l}
+ function term(){let l=un();while(isOp("*")||isOp("/")||isOp("//")||isOp("%")){const op=tk[p++].v;l={k:"bin",op,l,r:un()}}return l}
+ function un(){if(isOp("-")||isOp("+")){const op=tk[p++].v;return{k:"neg",op,e:un()}}return pw()}
+ function pw(){const b=atom();if(isOp("**")){p++;return{k:"bin",op:"**",l:b,r:un()}}return b}
+ function fstr(s){const parts=[];let buf="",i=0;
+  while(i<s.length){const c=s[i];
+   if(c==="{"){
+    if(s[i+1]==="{"){buf+="{";i+=2;continue}
+    const j=s.indexOf("}",i);if(j<0)throw bad("f-string: expecting '}'");
+    let inner=s.slice(i+1,j),spec="";const ci=inner.lastIndexOf(":");
+    if(ci>=0){spec=inner.slice(ci+1);inner=inner.slice(0,ci)}
+    if(buf)parts.push(buf);buf="";
+    parts.push({e:parse(tokenize(inner),"expr"),spec});i=j+1;
+   }else if(c==="}"){
+    if(s[i+1]==="}"){buf+="}";i+=2;continue}
+    throw bad("f-string: single '}' is not allowed");
+   }else{buf+=c;i++}}
+  if(buf)parts.push(buf);return{k:"f",parts}}
+ function atom(){
+  const t=pk();if(!t)throw bad();p++;
+  if(t.t==="num"||t.t==="str")return{k:"lit",v:t.v};
+  if(t.t==="fstr")return fstr(t.v);
+  if(t.t==="id"){
+   if(t.v==="True")return{k:"lit",v:true};
+   if(t.v==="False")return{k:"lit",v:false};
+   if(t.v==="None")return{k:"lit",v:null};
+   if(KW.has(t.v))throw bad();
+   if(isOp("(")){p++;const args=[],kw=Object.create(null);
+    while(!isOp(")")){
+     if(!pk())throw bad("'(' was never closed");
+     if(pk().t==="id"&&tk[p+1]&&tk[p+1].t==="op"&&tk[p+1].v==="="){const nm=tk[p].v;p+=2;kw[nm]=or()}else args.push(or());
+     if(isOp(","))p++;
+     else if(!isOp(")")){if(!pk())throw bad("'(' was never closed");throw bad("invalid syntax. Perhaps you forgot a comma?")}
+    }
+    p++;return{k:"call",f:t.v,args,kw}}
+   return{k:"name",v:t.v}}
+  if(t.t==="op"&&t.v==="("){
+   if(isOp(")")){p++;return{k:"lit",v:null}}
+   const e=or();if(!isOp(")")){if(!pk())throw bad("'(' was never closed");throw bad()}
+   p++;return e}
+  throw bad(t.v===")"?"unmatched ')'":undefined);
+ }
+ if(mode==="expr"){const e=or();if(p<tk.length)throw bad();return e}
+ if(!tk.length)return null;
+ const a=tk[0];
+ if(a.t==="id"&&tk[1]&&tk[1].t==="op"&&ASG.has(tk[1].v)){
+  if(KW.has(a.v)||["True","False","None"].includes(a.v))throw bad();
+  p=2;if(p>=tk.length)throw bad();
+  const e=or();if(p<tk.length)throw bad();
+  return{k:"asg",name:a.v,op:tk[1].v,e}}
+ if(a.t==="id"&&BLOCK.has(a.v))throw E("SyntaxError","у цьому міні-Python поки немає if, for, while, def та import");
+ const e=or();
+ if(p<tk.length)throw bad(isOp("=")?"cannot assign to expression here. Maybe you meant '==' instead of '='?":(isOp(")")?"unmatched ')'":undefined));
+ return{k:"expr",e};
+}
+
+function bin(op,a,b){
+ if(op==="+"&&typeof a==="string"&&typeof b==="string")return a+b;
+ if(op==="*"&&(typeof a==="string"||typeof b==="string")){
+  const s=typeof a==="string"?a:b,n=typeof a==="string"?b:a;
+  if(typeof n==="number")return n>0?s.repeat(n):"";
+  throw E("TypeError",`can't multiply sequence by non-int of type '${tn(n)}'`)}
+ if(isNum(a)&&isNum(b)){
+  const x=val(a),y=val(b),f=a instanceof F||b instanceof F,R=v=>f?new F(v):v;
+  switch(op){
+   case"+":return R(x+y);
+   case"-":return R(x-y);
+   case"*":return R(x*y);
+   case"/":if(y===0)throw E("ZeroDivisionError","division by zero");return new F(x/y);
+   case"//":if(y===0)throw E("ZeroDivisionError",f?"float floor division by zero":"integer division or modulo by zero");return R(Math.floor(x/y));
+   case"%":if(y===0)throw E("ZeroDivisionError",f?"float modulo":"integer modulo by zero");return R(x-y*Math.floor(x/y));
+   case"**":{const q=Math.pow(x,y);return(f||y<0)?new F(q):q}
+  }}
+ if(op==="+"&&typeof a==="string")throw E("TypeError",`can only concatenate str (not "${tn(b)}") to str`);
+ throw E("TypeError",`unsupported operand type(s) for ${op}: '${tn(a)}' and '${tn(b)}'`);
+}
+function cmpOp(op,a,b){
+ if(op==="=="||op==="!="){const eq=isNum(a)&&isNum(b)?val(a)===val(b):a===b;return op==="=="?eq:!eq}
+ if((isNum(a)&&isNum(b))||(typeof a==="string"&&typeof b==="string")){
+  const x=typeof a==="string"?a:val(a),y=typeof b==="string"?b:val(b);
+  return op==="<"?x<y:op===">"?x>y:op==="<="?x<=y:x>=y}
+ throw E("TypeError",`'${op}' not supported between instances of '${tn(a)}' and '${tn(b)}'`);
+}
+function fmt(v,spec){const m=/^\.(\d+)f$/.exec(spec||"");return m&&isNum(v)?val(v).toFixed(+m[1]):S(v)}
+function rnd(x){const f=Math.floor(x),d=x-f;return d<.5?f:d>.5?f+1:(f%2===0?f:f+1)}
+
+const BI=new Map([
+ ["print",async(a,k,io)=>{io.write(a.map(S).join(k.sep!==undefined?S(k.sep):" ")+(k.end!==undefined?S(k.end):"\n"));return null}],
+ ["input",async(a,k,io)=>io.input(a.length?S(a[0]):"")],
+ ["str",async a=>a.length?S(a[0]):""],
+ ["type",async a=>new T(tn(a[0]))],
+ ["int",async a=>{
+  const x=a[0];if(x===undefined)return 0;
+  if(typeof x==="number")return x;if(typeof x==="boolean")return x?1:0;
+  if(x instanceof F){if(!isFinite(x.v))throw E("ValueError","cannot convert float to integer");return Math.trunc(x.v)}
+  if(typeof x==="string"){if(/^\s*[+-]?\d+\s*$/.test(x))return parseInt(x,10);throw E("ValueError",`invalid literal for int() with base 10: '${x}'`)}
+  throw E("TypeError",`int() argument must be a string or a real number, not '${tn(x)}'`)}],
+ ["float",async a=>{
+  const x=a[0];if(x===undefined)return new F(0);
+  if(isNum(x))return new F(val(x));
+  if(typeof x==="string"){if(/^\s*[+-]?(\d+\.?\d*|\.\d+)\s*$/.test(x))return new F(parseFloat(x));throw E("ValueError",`could not convert string to float: '${x}'`)}
+  throw E("TypeError",`float() argument must be a string or a real number, not '${tn(x)}'`)}],
+ ["len",async a=>{if(typeof a[0]==="string")return[...a[0]].length;throw E("TypeError",`object of type '${tn(a[0])}' has no len()`)}],
+ ["abs",async a=>{if(!isNum(a[0]))throw E("TypeError",`bad operand type for abs(): '${tn(a[0])}'`);return a[0] instanceof F?new F(Math.abs(a[0].v)):Math.abs(val(a[0]))}],
+ ["round",async a=>{
+  if(!isNum(a[0]))throw E("TypeError",`type ${tn(a[0])} doesn't define __round__ method`);
+  if(a[1]===undefined)return rnd(val(a[0]));
+  const m=Math.pow(10,a[1]);return new F(rnd(val(a[0])*m)/m)}],
+ ["max",async a=>{if(!a.length||!a.every(isNum))throw E("TypeError","max() потребує чисел");const b=a.reduce((p,c)=>val(c)>val(p)?c:p);return b}],
+ ["min",async a=>{if(!a.length||!a.every(isNum))throw E("TypeError","min() потребує чисел");const b=a.reduce((p,c)=>val(c)<val(p)?c:p);return b}]
+]);
+
+async function ev(n,env,io){
+ switch(n.k){
+  case"lit":return n.v;
+  case"name":if(!env.has(n.v))throw E("NameError",`name '${n.v}' is not defined`);return env.get(n.v);
+  case"neg":{const v=await ev(n.e,env,io);if(!isNum(v))throw E("TypeError",`bad operand type for unary ${n.op}: '${tn(v)}'`);const x=n.op==="-"?-val(v):val(v);return v instanceof F?new F(x):x}
+  case"bin":{const l=await ev(n.l,env,io);return bin(n.op,l,await ev(n.r,env,io))}
+  case"cmp":{const l=await ev(n.l,env,io);return cmpOp(n.op,l,await ev(n.r,env,io))}
+  case"and":{const l=await ev(n.l,env,io);return truthy(l)?await ev(n.r,env,io):l}
+  case"or":{const l=await ev(n.l,env,io);return truthy(l)?l:await ev(n.r,env,io)}
+  case"not":return !truthy(await ev(n.e,env,io));
+  case"f":{let s="";for(const q of n.parts){if(typeof q==="string")s+=q;else s+=fmt(await ev(q.e,env,io),q.spec)}return s}
+  case"call":{
+   if(env.has(n.f))throw E("TypeError",`'${tn(env.get(n.f))}' object is not callable`);
+   const f=BI.get(n.f);if(!f)throw E("NameError",`name '${n.f}' is not defined`);
+   const a=[];for(const x of n.args)a.push(await ev(x,env,io));
+   const k=Object.create(null);for(const x in n.kw)k[x]=await ev(n.kw[x],env,io);
+   return f(a,k,io)}
+ }
+}
+async function ex(st,env,io){
+ if(st.k==="expr"){await ev(st.e,env,io);return}
+ let v=await ev(st.e,env,io);
+ if(st.op!=="="){
+  if(!env.has(st.name))throw E("NameError",`name '${st.name}' is not defined`);
+  v=bin(st.op.slice(0,-1),env.get(st.name),v)}
+ env.set(st.name,v);
+}
+window.PyErr=PyErr;
+window.runPy=async function(code,io){
+ const prog=[],lines=code.replace(/\r/g,"").split("\n");
+ for(let i=0;i<lines.length;i++){
+  const L=lines[i];if(!L.trim()||L.trim()[0]==="#")continue;
+  try{
+   if(/^\s/.test(L))throw E("IndentationError","unexpected indent");
+   const st=parse(tokenize(L,i+1),"stmt");if(st)prog.push([st,i+1]);
+  }catch(e){if(e instanceof PyErr)e.line=i+1;throw e}
+ }
+ const env=new Map();
+ for(const[st,ln]of prog){
+  try{await ex(st,env,io)}catch(e){if(e instanceof PyErr&&!e.line)e.line=ln;throw e}
+ }
+};
+})();
+</script>
+<script>
+const S=[
+{t:"Що таке алгоритм?",e:`<b>Лінійний алгоритм</b> — це послідовність команд, які виконуються <b>одна за одною</b>, без пропусків і повторів. Комп’ютер читає код як книгу: <b>зверху вниз, рядок за рядком</b>.`,
+ quiz:{q:"Розстав кроки у правильному порядку для установки гри:",o:["1) Зайти на сайт → 2) Завантажити файл → 3) Встановити і грати","1) Встановити і грати → 2) Зайти на сайт → 3) Завантажити файл","1) Завантажити файл → 2) Грати → 3) Зайти на сайт"],a:0}},
+{t:"Функція print()",e:`<code>print()</code> — це функція виведення. Усе, що ти напишеш у круглих дужках, комп’ютер покаже на екрані. Текст завжди пишемо в <b>лапках</b>.`,
+ code:`print("Привіт, світе!")`,
+ task:"Зміни текст і виведи своє ім’я двома print() у два рядки.",
+ test:(c,o)=>(c.match(/print\s*\(/g)||[]).length>=2&&o.trim().split("\n").length>=2,
+ pro:"Виведи три рядки: ім’я, клас і улюблену гру.",hint:`print("Мене звати ...")`},
+{t:"Що таке змінна?",e:`Змінна — це <b>коробка з підписом</b> у пам’яті комп’ютера. У скарбничці ми зберігаємо монети, а в змінній — дані: ім’я, кількість балів, пароль.<br>Знак <code>=</code> у Python не «дорівнює», а <b>«поклади значення у змінну»</b>: візьми те, що праворуч, і поклади у змінну ліворуч.`,
+ code:`name = "Макс"\nscore = 100\nprint(name, score)`,
+ task:"Створи змінну <code>age</code> з твоїм віком і виведи її разом із текстом.",
+ test:(c,o)=>/\bage\s*=/.test(c)&&o.trim().length>0,
+ pro:"Створи ще й змінну <code>city</code> і виведи все в одному print().",hint:`age = 12\nprint("Мені", age)`},
+{t:"Правила імен змінних",e:`Використовуй лише <b>латинські літери, цифри і знак підкреслення _</b>. Не можна: пробіли, починати з цифри, службові слова Python (наприклад <code>class</code>).`,
+ quiz:{q:"Яке ім’я змінної записано ПРАВИЛЬНО?",o:["player score","2level","class","player_score"],a:3}},
+{t:"Типи даних",e:`У коробку можна класти різне: <b>str</b> — рядки (текст у лапках), <b>int</b> — цілі числа, <b>float</b> — дробові числа (пишемо через <b>крапку</b>). Тип показує функція <code>type()</code>.`,
+ code:`a = "Влад"\nb = 10\nc = 3.14\nprint(type(a))\nprint(type(b))\nprint(type(c))`,
+ task:"Створи змінні кожного типу (str, int, float) про себе й виведи їхні типи.",
+ test:(c,o)=>/str/.test(o)&&/int/.test(o)&&/float/.test(o),
+ pro:"Що покаже <code>type(5 / 2)</code>? Перевір!",hint:`x = "текст"\ny = 7\nz = 1.5\nprint(type(x), type(y), type(z))`},
+{t:"Змінні змінюються",e:`Якщо покласти нове значення в коробку, <b>старе зникає назавжди</b>. Тому вони й називаються змінними!`,
+ code:`score = 50\nprint(score)\nscore = 100\nprint(score)`,
+ task:"Додай рядок, який збільшує <code>score</code> на 25, і виведи результат.",
+ test:(c,o)=>/score\s*=\s*score\s*\+/.test(c)&&/125/.test(o),
+ pro:"Зроби так, щоб score зменшився вдвічі.",hint:`score = score + 25`},
+{t:"Запитуємо користувача: input()",e:`<code>input()</code> зупиняє програму й чекає. Програма питає, ти вводиш текст і тиснеш <b>Enter</b>, а відповідь ховається у змінній. (Поле для відповіді з’явиться просто в чорному вікні результату — друкуй і тисни Enter.)`,
+ code:`name = input("Як тебе звати? ")\nprint("Привіт,", name)`,
+ task:"Запитай у користувача, з якого він міста, і привітай його.",
+ test:(c,o)=>/input\s*\(/.test(c)&&o.trim().length>0,
+ pro:"Запитай і ім’я, і місто та виведи одне речення.",hint:`city = input("Звідки ти? ")`},
+{t:"Математика в Python",e:`<code>+</code> додавання, <code>-</code> віднімання, <code>*</code> множення, <code>/</code> ділення (завжди дає дріб), <code>//</code> цілочисельне ділення, <code>%</code> остача, <code>**</code> степінь.`,
+ code:`print(10 + 5)\nprint(10 / 4)\nprint(10 // 4)\nprint(10 % 4)\nprint(2 ** 3)`,
+ task:"Обчисли, скільки повних десятків у числі 47 і яка остача (використай <code>//</code> та <code>%</code>).",
+ test:(c,o)=>/\/\//.test(c)&&/%/.test(c)&&/4/.test(o)&&/7/.test(o),
+ pro:"Скільки повних годин і хвилин у 275 хвилинах?",hint:`print(47 // 10)\nprint(47 % 10)`},
+{t:"Текст чи число?",e:`<b>input()</b> завжди повертає <b>текст</b>. З текстом не можна рахувати! Обгорни input у <code>int()</code>, щоб отримати число.<br>❌ <code>age = input(...)</code> &nbsp; ✅ <code>age = int(input(...))</code>`,
+ code:`age = int(input("Скільки тобі років? "))\nprint("Наступного року тобі буде", age + 1)`,
+ task:"Запитай число й виведи його подвоєне значення.",
+ test:(c,o)=>/int\s*\(\s*input/.test(c)&&o.trim().length>0,
+ pro:"Запитай два числа та виведи їхню суму.",hint:`n = int(input("Число: "))\nprint(n * 2)`},
+{t:"Помилки та PEP8",e:`Помилка — це нормально! Python сам підкаже, що не так. <b>SyntaxError</b> — зазвичай забули дужку чи лапку. А ще пиши <b>красиво (PEP8)</b>: ❌ <code>a=10+5</code> → ✅ <code>a = 10 + 5</code> (пробіли навколо знаків).`,
+ code:`print("Привіт!`,
+ task:"🔧 Виправ помилку в коді, щоб програма заробила.",
+ test:(c,o,e)=>!e&&/Привіт/.test(o),hint:"Забули закрити лапки і дужку: print(\"Привіт!\")"},
+{t:"Фінал: твоя програма",e:`Збираємо пазл: <b>Введення → Обчислення → Виведення</b>.`,
+ code:`# 1. Введення\n\n# 2. Обчислення\n\n# 3. Виведення\n`,
+ task:"🏆 Напиши програму з 3 частин: запитай ім’я, запитай вік (<code>int</code>), привітай і виведи, скільки років буде наступного року.",
+ test:(c,o,e)=>!e&&(c.match(/input\s*\(/g)||[]).length>=2&&/int\s*\(/.test(c)&&/print\s*\(/.test(c)&&/\+\s*1|1\s*\+/.test(c),
+ pro:"Додай ще й обчислення року народження (2026 − вік).",hint:`name = input("Ім’я: ")\nage = int(input("Вік: "))\nprint("Привіт,", name)\nprint("Через рік тобі буде", age + 1)`}
+];
+
+let cur=0,done=JSON.parse(localStorageGet("py7")||"[]");
+function localStorageGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function localStorageSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+const $=id=>document.getElementById(id);
+
+function nav(){
+ $("nav").innerHTML=S.map((s,i)=>`<button class="${i==cur?"on":""} ${done.includes(i)?"done":""}" onclick="go(${i})">${done.includes(i)?"✓":i+1}</button>`).join("");
+ $("pb").style.width=done.length/S.length*100+"%";$("xp").textContent=done.length;
+}
+function go(i){cur=i;render()}
+function finish(i){if(!done.includes(i)){done.push(i);localStorageSet("py7",JSON.stringify(done))}nav()}
+
+function render(){
+ const s=S[cur];let h=`<h2>${cur+1}. ${s.t}</h2><div class="box">${s.e}</div>`;
+ if(s.quiz){
+  h+=`<p><b>${s.quiz.q}</b></p>`+s.quiz.o.map((o,j)=>`<button class="opt" onclick="pick(${j},this)">${o}</button>`).join("")+`<div class="msg" id="msg"></div>`;
+ }else{
+  h+=`<p><b>▶ Запусти приклад і спробуй змінити його:</b></p><textarea id="ed" spellcheck="false">${s.code.replace(/</g,"&lt;")}</textarea>
+  <div class="row"><button class="b" id="run" onclick="run()">▶ Запустити</button><button class="b gh" onclick="$('ed').value=S[cur].code">↺ Спочатку</button></div>
+  <pre class="out" id="out">Тут з’явиться результат…</pre>
+  <div class="task"><span class="tag t-task">ЗАВДАННЯ</span>${s.task}${s.pro?`<br><span class="tag t-pro">ПРОФІ</span>${s.pro}`:""}</div>
+  <div class="msg" id="msg"></div>
+  <button class="b alt" onclick="$('hint').style.display='block'">💡 Підказка</button>
+  <pre class="hint" id="hint">${s.hint.replace(/</g,"&lt;")}</pre>`;
+ }
+ h+=`<div class="row" style="margin-top:16px">${cur>0?`<button class="b gh" onclick="go(cur-1)">← Назад</button>`:""}${cur<S.length-1?`<button class="b alt" onclick="go(cur+1)">Далі →</button>`:""}</div>`;
+ $("card").innerHTML=h;nav();
+ if(!s.quiz)$("ed").addEventListener("keydown",e=>{if(e.key==="Tab"){e.preventDefault();const t=e.target,p=t.selectionStart;t.value=t.value.slice(0,p)+"    "+t.value.slice(t.selectionEnd);t.selectionStart=t.selectionEnd=p+4}});
+}
+
+function pick(j,b){
+ const q=S[cur].quiz,m=$("msg");
+ if(j===q.a){b.classList.add("ok");m.className="msg ok";m.textContent="✅ Правильно! +1 ⭐";finish(cur)}
+ else{b.classList.add("no");m.className="msg no";m.textContent="❌ Майже! Спробуй ще раз."}
+}
+
+const EXPL={SyntaxError:"Синтаксична помилка: забули лапку, дужку або двокрапку?",NameError:"Python не знає такого імені: перевір, чи правильно написана змінна і чи вона створена вище.",TypeError:"Не підходить тип даних: можливо, змішали текст і число (потрібен int()?).",ValueError:"Не вдалося перетворити значення: вводь саме число.",ZeroDivisionError:"На нуль ділити не можна!",IndentationError:"Зайвий пробіл на початку рядка."};
+
+let pend=null,runId=0;
+function askInput(out,p){return new Promise((res,rej)=>{
+ out.append(document.createTextNode(p));
+ const inp=document.createElement("input");inp.className="in";out.append(inp);inp.focus();
+ pend=()=>rej(new Error("stopped"));
+ inp.addEventListener("keydown",e=>{if(e.key==="Enter"){const v=inp.value;inp.replaceWith(document.createTextNode(v+"\n"));pend=null;res(v)}});
+})}
+async function run(){
+ if(pend){pend();pend=null}
+ const my=++runId,code=$("ed").value,out=$("out"),msg=$("msg");
+ let buf="",err="";out.textContent="";out.className="out";msg.textContent="";msg.className="msg";
+ const w=s=>{buf+=s;out.append(document.createTextNode(s))};
+ const io={write:w,input:async p=>{const v=await askInput(out,p);buf+=p+v+"\n";return v}};
+ try{await runPy(code,io)}
+ catch(e){
+  if(my!==runId)return;
+  if(e instanceof PyErr){err=e.k+": "+e.message;
+   w((buf&&!buf.endsWith("\n")?"\n":"")+"⚠️ Рядок "+e.line+" → "+err);
+   if(EXPL[e.k])w("\n👉 "+EXPL[e.k])}
+  else{err="Error";w("⚠️ Щось пішло не так: "+e.message)}
+  out.className="out err"}
+ if(my!==runId)return;
+ if(!buf)out.textContent="(програма нічого не вивела)";
+ const s=S[cur];
+ if(s.test){
+  if(s.test(code,buf,err)){msg.className="msg ok";msg.textContent="🎉 Чудово! Завдання виконано. +1 ⭐";finish(cur)}
+  else{msg.className="msg";msg.textContent=err?"Спочатку виправ помилку, потім перевіримо завдання.":"Поки що не те. Перечитай завдання або візьми підказку."}
+ }
+}
+render();
+</script>
+</body>
+</html>
